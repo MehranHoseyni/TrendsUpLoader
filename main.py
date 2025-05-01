@@ -1,82 +1,58 @@
 # main.py
-
-import os
-import json
 import datetime
 from search_trending import get_trending_keywords
 from download_video import download_video
 from youtube_upload import upload_video_file
+from utils import save_json
 
-# Config
+LOG_FILE = 'output.txt'
 MAX_TRENDS = 5
-MAX_VIDEOS_PER_TREND = 3
-LOG_FILE = "output.txt"
 
-def generate_title(trend: str) -> str:
-    """Generate a catchy Persian title based on the trend keyword."""
-    return f"ویدیوی داغ دربارهٔ «{trend}»"
 
-def generate_description(trend: str, source_url: str) -> str:
-    """Generate a short Persian description for the video."""
-    return (
-        f"این ویدیو دربارهٔ موضوع ترند «{trend}» است. "
-        f"منبع اصلی: {source_url}\n\n"
-        "برای ویدیوهای بیشتر کانال را سابسکرایب کنید!"
-    )
+def generate_title(trend):
+    return f'ویدیوی داغ دربارهٔ «{trend}»'
 
-def process_trend(trend: str, log: dict) -> None:
-    """
-    For a single trend:
-      - search and download a video
-      - upload it to YouTube
-      - record results in log
-    """
-    log_entry = {"trend": trend, "status": None}
+
+def generate_description(trend, url):
+    return f'این ویدیو دربارهٔ موضوع ترند «{trend}» است. منبع: {url}\nبرای ویدیوهای بیشتر سابسکرایب کنید.'
+
+
+def process_trend(trend, log):
+    entry = {'trend': trend, 'status': None}
     try:
-        # 1. Download best video (or get direct URL)
-        video_path = download_video(trend)  # returns local file path or URL
-        if not video_path:
-            raise RuntimeError("No video found for this trend")
-        log_entry["video"] = video_path
+        # دانلود
+        query = f'ytsearch:{trend}'
+        path = download_video(query)
+        entry['video_path'] = path
 
-        # 2. Build metadata
+        # آپلود
         title = generate_title(trend)
-        description = generate_description(trend, video_path)
-        log_entry["title"] = title
-
-        # 3. Upload
-        video_id = upload_video_file(
-            file_path=video_path,
-            title=title,
-            description=description,
-            tags=[trend]
-        )
-        log_entry["youtube_id"] = video_id
-        log_entry["status"] = "uploaded"
+        desc = generate_description(trend, path)
+        vid_id = upload_video_file(path, title, desc, [trend])
+        entry.update({'youtube_id': vid_id, 'status': 'uploaded'})
 
     except Exception as e:
-        log_entry["status"] = "failed"
-        log_entry["error"] = str(e)
+        entry.update({'status': 'failed', 'error': str(e)})
 
-    finally:
-        log.setdefault("runs", []).append(log_entry)
+    log.setdefault('runs', []).append(entry)
+
 
 def main():
-    now = datetime.datetime.now().isoformat()
-    overall_log = {"started_at": now, "runs": []}
+    start = datetime.datetime.now().isoformat()
+    overall = {'started_at': start, 'runs': []}
 
-    # 1. Get trending keywords
     trends = get_trending_keywords()[:MAX_TRENDS]
-    if not trends:
-        overall_log["error"] = "No trends found"
+    save_json('trends.json', trends)
+
+    if trends:
+        for t in trends:
+            process_trend(t, overall)
     else:
-        for trend in trends:
-            process_trend(trend, overall_log)
+        overall['error'] = 'No trends found'
 
-    # 2. Save log to file
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
-        json.dump(overall_log, f, ensure_ascii=False, indent=2)
-    print(f"Done. Log saved to {LOG_FILE}")
+    save_json(LOG_FILE, overall)
+    print('Finished. Log saved.')
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
