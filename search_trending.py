@@ -9,7 +9,7 @@ from pytrends.request import TrendReq
 
 # Constants
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
-GOOGLE_TRENDS_GE O = 'IR'
+GOOGLE_TRENDS_GEO = 'IR'
 MAX_KEYWORDS = 10
 CACHE_FILE = 'trends.json'
 
@@ -17,15 +17,23 @@ CACHE_FILE = 'trends.json'
 pytrends = TrendReq(hl='fa', tz=180)
 
 def get_google_trends(top_n=MAX_KEYWORDS):
+    """
+    دریافت ترندهای مرتبط با ایران از Google Trends
+    """
     try:
-        pytrends.build_payload(['ایران'], cat=0, timeframe='now 1-d', geo='IR')
-        data = pytrends.related_topics().get('ایران', {}).get('top', {})
-        return data['topic_title'].tolist()[:top_n] if data is not None else []
+        pytrends.build_payload(['ایران'], cat=0, timeframe='now 1-d', geo=GOOGLE_TRENDS_GEO)
+        related = pytrends.related_topics().get('ایران', {}).get('top', None)
+        if related is not None:
+            return related['topic_title'].tolist()[:top_n]
     except Exception:
-        return []
+        pass
+    return []
 
 
 def get_youtube_trending(top_n=MAX_KEYWORDS):
+    """
+    دریافت ویدیوهای ترند YouTube برای ایران
+    """
     try:
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         req = youtube.videos().list(part='snippet', chart='mostPopular', regionCode='IR', maxResults=top_n)
@@ -36,6 +44,9 @@ def get_youtube_trending(top_n=MAX_KEYWORDS):
 
 
 def get_trending_keywords():
+    """
+    ترکیب نتایج Google Trends و YouTube Trending و کش کردن در فایل
+    """
     # 1. Try loading cache
     if os.path.exists(CACHE_FILE):
         try:
