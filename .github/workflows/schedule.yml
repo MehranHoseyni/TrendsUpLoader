@@ -1,19 +1,13 @@
-name: Auto Video Trend Uploader
+name: Trend Video Publisher
 
 on:
-  workflow_dispatch:   # فعال‌سازی اجرای دستی
+  workflow_dispatch: {}
   schedule:
-    # 10:00 IRST → 06:30 UTC
-    - cron: '30 06 * * *'
-    # 14:00 IRST → 10:30 UTC
-    - cron: '30 10 * * *'
-    # 18:00 IRST → 14:30 UTC
-    - cron: '30 14 * * *'
-    # 21:00 IRST → 17:30 UTC
-    - cron: '30 17 * * *'
+    - cron: '30 05 * * *'  # 09:00 IRST → 05:30 UTC
+    - cron: '30 16 * * *'  # 20:00 IRST → 16:30 UTC
 
 jobs:
-  upload:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,9 +17,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -33,7 +25,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install --upgrade pip && pip install -r requirements.txt
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run main script
         env:
@@ -48,3 +42,10 @@ jobs:
         with:
           name: runner-logs-${{ github.run_number }}
           path: output.txt
+
+      - name: Save trends cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trends-cache
+          path: trends.json
