@@ -1,3 +1,4 @@
+# لیست کتابخانه‌های مورد نیاز
 requests
 python-dotenv
 yt-dlp
@@ -5,3 +6,5 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 apscheduler
+beautifulsoup4
+google-trends-api  # یا pytrends
