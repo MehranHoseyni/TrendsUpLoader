@@ -1,98 +1,82 @@
+# main.py
+
 import os
 import json
-import yt_dlp
-import requests
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-import io
+import datetime
+from search_trending import get_trending_keywords
+from download_video import download_video
+from youtube_upload import upload_video_file
 
-# ====== Config ======
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-PEXELS_API_KEY  = os.getenv("PEXELS_API_KEY")
-PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
-TREND_KEYWORD   = "ایران"
-MAX_TRENDS      = 5
+# Config
+MAX_TRENDS = 5
 MAX_VIDEOS_PER_TREND = 3
-DOWNLOAD_SIZE_LIMIT = 30_000_000  # 30MB
+LOG_FILE = "output.txt"
 
-# ====== Helper Functions ======
+def generate_title(trend: str) -> str:
+    """Generate a catchy Persian title based on the trend keyword."""
+    return f"ویدیوی داغ دربارهٔ «{trend}»"
 
-def get_google_trends_keywords(limit=MAX_TRENDS):
-    # نمونه ثابت تا بعداً با API‌ واقعی جایگزین شود
-    return ["ایران"]  
-
-def search_pexels_videos(query, per_page=MAX_VIDEOS_PER_TREND):
-    headers = {"Authorization": PEXELS_API_KEY}
-    resp = requests.get(
-        "https://api.pexels.com/videos/search",
-        headers=headers,
-        params={"query": query, "per_page": per_page}
+def generate_description(trend: str, source_url: str) -> str:
+    """Generate a short Persian description for the video."""
+    return (
+        f"این ویدیو دربارهٔ موضوع ترند «{trend}» است. "
+        f"منبع اصلی: {source_url}\n\n"
+        "برای ویدیوهای بیشتر کانال را سابسکرایب کنید!"
     )
-    data = resp.json().get("videos", [])
-    return [v["video_files"][0]["link"] for v in data]
 
-def search_pixabay_videos(query, per_page=MAX_VIDEOS_PER_TREND):
-    resp = requests.get(
-        "https://pixabay.com/api/videos/",
-        params={"key": PIXABAY_API_KEY, "q": query, "per_page": per_page}
-    )
-    data = resp.json().get("hits", [])
-    return [v["videos"]["medium"]["url"] for v in data]
+def process_trend(trend: str, log: dict) -> None:
+    """
+    For a single trend:
+      - search and download a video
+      - upload it to YouTube
+      - record results in log
+    """
+    log_entry = {"trend": trend, "status": None}
+    try:
+        # 1. Download best video (or get direct URL)
+        video_path = download_video(trend)  # returns local file path or URL
+        if not video_path:
+            raise RuntimeError("No video found for this trend")
+        log_entry["video"] = video_path
 
-def choose_video(videos):
-    # Adaptive quality: اولین ویدیو زیر حد حجم را انتخاب کن
-    for url in videos:
-        info = yt_dlp.YoutubeDL({'quiet': True}).extract_info(url, download=False)
-        size = info.get("filesize") or info.get("filesize_approx", 0)
-        if size <= DOWNLOAD_SIZE_LIMIT:
-            return url
-    # اگر هیچ‌کدام زیر حد نبود، اولین گزینه را برگردان
-    return videos[0]
+        # 2. Build metadata
+        title = generate_title(trend)
+        description = generate_description(trend, video_path)
+        log_entry["title"] = title
 
-def upload_stream(video_url):
-    # استریم دانلود و آپلود مستقیم به یوتیوب
-    ydl_opts = {'format': 'best', 'quiet': True, 'outtmpl': '-'}
-    buffer = io.BytesIO()
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
-        buffer.seek(0)
-    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-    body = {
-        "snippet": {
-            "title": f"Trending: {TREND_KEYWORD}",
-            "description": video_url
-        },
-        "status": {"privacyStatus": "public"}
-    }
-    media = MediaIoBaseUpload(buffer, mimetype="video/mp4", resumable=True)
-    req = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
-    resp = None
-    while resp is None:
-        status, resp = req.next_chunk()
-    return resp.get("id")
+        # 3. Upload
+        video_id = upload_video_file(
+            file_path=video_path,
+            title=title,
+            description=description,
+            tags=[trend]
+        )
+        log_entry["youtube_id"] = video_id
+        log_entry["status"] = "uploaded"
+
+    except Exception as e:
+        log_entry["status"] = "failed"
+        log_entry["error"] = str(e)
+
+    finally:
+        log.setdefault("runs", []).append(log_entry)
 
 def main():
-    # ۱. دریافت ترندها
-    trends = get_google_trends_keywords()
-    selected_videos = []
+    now = datetime.datetime.now().isoformat()
+    overall_log = {"started_at": now, "runs": []}
 
-    # ۲. جستجو و انتخاب ویدیو برای هر ترند
-    for term in trends:
-        vids = []
-        vids.extend(search_pexels_videos(term))
-        vids.extend(search_pixabay_videos(term))
-        pick = choose_video(vids)
-        selected_videos.append(pick)
+    # 1. Get trending keywords
+    trends = get_trending_keywords()[:MAX_TRENDS]
+    if not trends:
+        overall_log["error"] = "No trends found"
+    else:
+        for trend in trends:
+            process_trend(trend, overall_log)
 
-    # ۳. لاگ ویدیوهای انتخاب‌شده
-    with open("output.txt", "w", encoding="utf-8") as f:
-        json.dump(selected_videos, f, ensure_ascii=False, indent=2)
-    print("Videos selected:", selected_videos)
-
-    # ۴. آپلود هر ویدیو
-    for url in selected_videos:
-        vid_id = upload_stream(url)
-        print("Uploaded video ID:", vid_id)
+    # 2. Save log to file
+    with open(LOG_FILE, "w", encoding="utf-8") as f:
+        json.dump(overall_log, f, ensure_ascii=False, indent=2)
+    print(f"Done. Log saved to {LOG_FILE}")
 
 if __name__ == "__main__":
     main()
