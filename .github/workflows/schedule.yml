@@ -1,7 +1,7 @@
 name: Auto Video Trend Uploader
 
 on:
-  workflow_dispatch: {}   # فعال‌سازی اجرای دستی
+  workflow_dispatch:   # فعال‌سازی اجرای دستی
   schedule:
     # 10:00 IRST → 06:30 UTC
     - cron: '30 06 * * *'
@@ -33,9 +33,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install --upgrade pip && pip install -r requirements.txt
 
       - name: Run main script
         env:
@@ -46,7 +44,7 @@ jobs:
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: runner-logs-${{ github.run_number }}
           path: output.txt
