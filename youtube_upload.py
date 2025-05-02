@@ -1,19 +1,37 @@
 # youtube_upload.py
+import google_auth_oauthlib.flow
+import googleapiclient.discovery
+import googleapiclient.errors
 import os
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
 
-YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+def upload_video_file(file_path: str, title: str, description: str, tags: list):
+    api_service_name = "youtube"
+    api_version = "v3"
+    client_secrets_file = "client_secret.json"
 
-def upload_video_file(file_path, title, description='', tags=None, category_id='22'):
-    youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-    body = {
-        'snippet': {'title': title, 'description': description, 'tags': tags or [], 'categoryId': category_id},
-        'status': {'privacyStatus': 'public'}
+    # دریافت یوزر تاژن از سکرت
+    api_key = os.environ.get('YOUTUBE_API_KEY')
+
+    if not api_key:
+        raise ValueError("YouTube API key is not set in the environment variables.")
+
+    youtube = googleapiclient.discovery.build(api_service_name, api_version, developerKey=api_key)
+
+    request_body = {
+        'snippet': {
+            'title': title,
+            'description': description,
+            'tags': tags,
+        },
+        'status': {
+            'privacyStatus': 'public',  # می‌توانید وضعیت حریم خصوصی را تغییر دهید
+        }
     }
-    media = MediaFileUpload(file_path, chunksize=-1, resumable=True, mimetype='video/mp4')
-    req = youtube.videos().insert(part='snippet,status', body=body, media_body=media)
-    resp = None
-    while resp is None:
-        status, resp = req.next_chunk()
-    return resp.get('id')
+
+    # آپلود ویدیو
+    media_file = MediaFileUpload(file_path, mimetype='video/mp4', resumable=True)
+    request = youtube.videos().insert(part="snippet,status", body=request_body, media_body=media_file)
+    
+    response = request.execute()
+
+    return response['id']
