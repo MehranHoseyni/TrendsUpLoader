@@ -18,8 +18,9 @@ def generate_description(trend, url):
 
 def process_trend(trend, log):
     entry = {'trend': trend, 'status': None}
-    
-    # دانلود و خطاهای مربوطه
+    path = None  # مقدار اولیه برای جلوگیری از خطا
+
+    # دانلود ویدیو
     try:
         query = f'ytsearch:{trend}'
         path = download_video(query)
@@ -27,17 +28,18 @@ def process_trend(trend, log):
     except Exception as e:
         print(f"Error downloading video for trend '{trend}': {e}")
         entry.update({'status': 'failed', 'error': f"Download error: {str(e)}"})
-    
-    # آپلود و خطاهای مربوطه
-    try:
-        title = generate_title(trend)
-        desc = generate_description(trend, path)
-        vid_id = upload_video_file(path, title, desc, [trend])
-        entry.update({'youtube_id': vid_id, 'status': 'uploaded'})
-    except Exception as e:
-        print(f"Error uploading video for trend '{trend}': {e}")
-        entry.update({'status': 'failed', 'error': f"Upload error: {str(e)}"})
-    
+
+    # فقط اگر دانلود موفق بود، آپلود انجام میشه
+    if path:
+        try:
+            title = generate_title(trend)
+            desc = generate_description(trend, path)
+            vid_id = upload_video_file(path, title, desc, [trend])
+            entry.update({'youtube_id': vid_id, 'status': 'uploaded'})
+        except Exception as e:
+            print(f"Error uploading video for trend '{trend}': {e}")
+            entry.update({'status': 'failed', 'error': f"Upload error: {str(e)}"})
+
     log.setdefault('runs', []).append(entry)
 
 
@@ -46,11 +48,11 @@ def main():
     overall = {'started_at': start, 'runs': []}
 
     trends = get_trending_keywords()
-    print("Trends fetched:", trends)  # چاپ ترندها قبل از پردازش
+    print("Trends fetched:", trends)
     save_json('trends.json', trends)
 
     if trends:
-        for t in trends:
+        for t in trends[:MAX_TRENDS]:
             process_trend(t, overall)
     else:
         overall['error'] = 'No trends found'
