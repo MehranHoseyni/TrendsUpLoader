@@ -48,19 +48,16 @@ def main():
     start = datetime.datetime.now().isoformat()
     overall = {'started_at': start, 'runs': []}
 
-    # دریافت ترندها
     trends = get_trending_keywords()
     print("Trends fetched:", trends)
     save_json('trends.json', trends)
 
-    # پردازش ترندها
     if trends:
         for t in trends[:MAX_TRENDS]:
             process_trend(t, overall)
     else:
         overall['error'] = 'No trends found'
 
-    # ذخیره لاگ
     save_json(LOG_FILE, overall)
     print('Finished. Log saved.')
 
