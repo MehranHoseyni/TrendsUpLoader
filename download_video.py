@@ -1,4 +1,3 @@
-# download_video.py
 import os
 import yt_dlp
 
@@ -10,18 +9,15 @@ def download_video(query: str) -> str:
     """
     DOWNLOAD_DIR = 'downloads'
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-    
-    # مسیر فایل کوکی‌ها از مخزن اسرار
-    cookies_path = os.getenv('COOKIES_TXT')
-    
+
     ydl_opts = {
         'format': 'best[height<=480]',
-        'outtmpl': f'{DOWNLOAD_DIR}/%(title)s.%(ext)s',
+        'outtmpl': f'{DOWNLOAD_DIR}/%(title).70s.%(ext)s',
         'default_search': 'ytsearch',
         'quiet': True,
-        'cookies': cookies_path  # اضافه کردن کوکی‌ها به آپشن‌ها
+        'cookies': 'cookies.txt'  # استفاده مستقیم از فایل ساخته‌شده
     }
-    
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(query, download=True)
         return ydl.prepare_filename(info)
