@@ -1,5 +1,3 @@
-# .github/workflows/scheduler.yml
-
 name: Trend Video Publisher
 
 on:
@@ -13,18 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. بررسی کدها
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. کش pip برای سریع‌تر شدن نصب
       - name: Cache pip
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
-      # 3. نصب پایتون و dependencies
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -35,26 +30,22 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ───── نصب و پیکربندی yt-dlp ─────
+      - name: Decode YouTube cookies
+        run: |
+          echo "${{ secrets.YOUTUBE_COOKIES_B64 }}" | base64 -d > cookies.txt
+
       - name: Setup yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      # ───── بارگذاری کوکی‌های YouTube ─────
-      - name: Setup yt-dlp YouTube cookies
-        uses: AnimMouse/setup-yt-dlp/cookies@v3
-        with:
-          cookies: ${{ secrets.YOUTUBE_COOKIES }}
-
-      # ───── اجرای اسکریپت اصلی ─────
       - name: Run main script
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           PEXELS_API_KEY:   ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY:  ${{ secrets.PIXABAY_API_KEY }}
+          COOKIE_FILE: 'cookies.txt'
         run: |
           python main.py > output.txt 2>&1
 
-      # ───── آپلود لاگ و کش نتایج ─────
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,10 +59,3 @@ jobs:
         with:
           name: trends-cache
           path: trends.json
-
-      # ───── به‌روزرسانی خودکار کوکی‌ها ─────
-      - name: Update yt-dlp YouTube cookies
-        uses: AnimMouse/setup-yt-dlp/cookies/update@v3
-        with:
-          cookies_secret_name: YOUTUBE_COOKIES
-          token: ${{ secrets.GH_PAT }}   # ← اینجا PAT را فراخوانی می‌کنیم
