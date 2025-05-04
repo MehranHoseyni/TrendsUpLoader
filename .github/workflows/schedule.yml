@@ -1,3 +1,5 @@
+# .github/workflows/scheduler.yml
+
 name: Trend Video Publisher
 
 on:
@@ -11,15 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. بررسی کدها
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. کش pip برای سریع‌تر شدن نصب
       - name: Cache pip
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
+      # 3. نصب پایتون و dependencies
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -30,14 +35,15 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ───── مراحل yt-dlp و کوکی ─────
+      # ───── نصب و پیکربندی yt-dlp ─────
       - name: Setup yt-dlp
-        uses: AnimMouse/setup-yt-dlp@v3                          # نصب yt-dlp 1
+        uses: AnimMouse/setup-yt-dlp@v3
 
+      # ───── بارگذاری کوکی‌های YouTube ─────
       - name: Setup yt-dlp YouTube cookies
-        uses: AnimMouse/setup-yt-dlp/cookies@v3                    # بارگذاری کوکی‌ها
+        uses: AnimMouse/setup-yt-dlp/cookies@v3
         with:
-          cookies: ${{ secrets.YOUTUBE_COOKIES }}                  # خواندن از Secret 2
+          cookies: ${{ secrets.YOUTUBE_COOKIES }}
 
       # ───── اجرای اسکریپت اصلی ─────
       - name: Run main script
@@ -48,6 +54,7 @@ jobs:
         run: |
           python main.py > output.txt 2>&1
 
+      # ───── آپلود لاگ و کش نتایج ─────
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,9 +69,9 @@ jobs:
           name: trends-cache
           path: trends.json
 
-      # ───── خودکارسازی به‌روزرسانی کوکی‌ها ─────
+      # ───── به‌روزرسانی خودکار کوکی‌ها ─────
       - name: Update yt-dlp YouTube cookies
         uses: AnimMouse/setup-yt-dlp/cookies/update@v3
         with:
           cookies_secret_name: YOUTUBE_COOKIES
-          token: ${{ secrets.GH_PAT }}                             # نیاز به PAT با دسترسی write 3
+          token: ${{ secrets.GH_PAT }}   # ← اینجا PAT را فراخوانی می‌کنیم
