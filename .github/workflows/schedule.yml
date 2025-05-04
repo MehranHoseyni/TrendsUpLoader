@@ -29,8 +29,17 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create cookies.txt
-        run: echo "${{ secrets.YTDLP_COOKIES }}" > cookies.txt
+      # ← اینجا مراحل جدید اضافه می‌شوند ↓
+
+      - name: Setup yt-dlp
+        uses: AnimMouse/setup-yt-dlp@v3                             # نصب yt-dlp 0
+
+      - name: Setup yt-dlp YouTube cookies
+        uses: AnimMouse/setup-yt-dlp/cookies@v3                       # بارگذاری کوکی‌ها
+        with:
+          cookies: ${{ secrets.YOUTUBE_COOKIES }}                    # کوکی‌ها از Secret خوانده می‌شود 1
+
+      # ← ادامه مراحل قبلی ↓
 
       - name: Run main script
         env:
@@ -38,7 +47,7 @@ jobs:
           PEXELS_API_KEY:   ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY:  ${{ secrets.PIXABAY_API_KEY }}
         run: |
-          python main.py > output.txt 2>&1
+          python main.py > output.txt 2>&1  # یا اگر مستقیم yt-dlp صدا می‌زنی: yt-dlp --cookies ~/.cache/yt-dlp/youtube/cookies.txt URL
 
       - name: Upload logs
         if: always()
