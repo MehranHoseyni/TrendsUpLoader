@@ -13,15 +13,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Decode YouTube cookies
+        run: |
+          echo "${{ secrets.YOUTUBE_COOKIES_B64 }}" | base64 -d > cookies.txt
+
       - name: Setup yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      - name: Setup yt-dlp YouTube cookies
-        uses: AnimMouse/setup-yt-dlp/cookies@v3
-        with:
-          cookies: ${{ secrets.YOUTUBE_COOKIES }}
-
-      - name: Download video from YouTube
+      - name: Download sample video
         continue-on-error: true
         run: |
-          yt-dlp --cookies ~/.cache/yt-dlp/youtube/cookies.txt "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+          yt-dlp --cookiefile cookies.txt "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
