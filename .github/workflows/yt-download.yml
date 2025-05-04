@@ -13,13 +13,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up yt-dlp
+      - name: Install yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      - name: Set up yt-dlp YouTube cookies
+      - name: Load YouTube cookies
         uses: AnimMouse/setup-yt-dlp/cookies@v3
         with:
           cookies: ${{ secrets.YOUTUBE_COOKIES }}
 
       - name: Download video
-        run: yt-dlp "https://www.youtube.com/watch?v=BaW_jenozKc"
+        run: |
+          yt-dlp --cookies ~/.cache/yt-dlp/youtube/cookies.txt "https://www.youtube.com/watch?v=BaW_jenozKc"
