@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -29,25 +30,23 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ← اینجا مراحل جدید اضافه می‌شوند ↓
-
+      # ─────────────── مراحل yt-dlp ───────────────
       - name: Setup yt-dlp
-        uses: AnimMouse/setup-yt-dlp@v3                             # نصب yt-dlp 0
+        uses: AnimMouse/setup-yt-dlp@v3                        
 
       - name: Setup yt-dlp YouTube cookies
-        uses: AnimMouse/setup-yt-dlp/cookies@v3                       # بارگذاری کوکی‌ها
+        uses: AnimMouse/setup-yt-dlp/cookies@v3                  
         with:
-          cookies: ${{ secrets.YOUTUBE_COOKIES }}                    # کوکی‌ها از Secret خوانده می‌شود 1
+          cookies: ${{ secrets.YOUTUBE_COOKIES }}                
 
-      # ← ادامه مراحل قبلی ↓
-
+      # ───────────── ادامه کار اصلی ───────────────
       - name: Run main script
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           PEXELS_API_KEY:   ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY:  ${{ secrets.PIXABAY_API_KEY }}
         run: |
-          python main.py > output.txt 2>&1  # یا اگر مستقیم yt-dlp صدا می‌زنی: yt-dlp --cookies ~/.cache/yt-dlp/youtube/cookies.txt URL
+          python main.py > output.txt 2>&1
 
       - name: Upload logs
         if: always()
